@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friendship Messages</title>
+    <!-- Updated Firebase imports -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #FFFAEC;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            display: flex;
+            background: #F5ECD5;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: #578E7E;
+            color: white;
+            padding: 20px;
+            border-radius: 15px 0 0 15px;
+            transition: all 0.3s ease;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        
+        .sidebar h3 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: white;
+            padding-top: 50px;
+        }
+        
+        #nameList {
+            list-style-type: none;
+        }
+        
+        #nameList li {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #nameList li:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 30px;
+            background: white;
+            border-radius: 0 15px 15px 0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        
+        .messages h3 {
+            color: #578E7E;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .profile-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #578E7E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 36px;
+            margin-bottom: 10px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .profile-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #578E7E;
+        }
+        
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 30px;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        
+        textarea {
+            height: 120px;
+            resize: none;
+        }
+        
+        button {
+            background: #578E7E;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            align-self: flex-end;
+            width: 120px;
+        }
+        
+        button:hover {
+            background: #426e61;
+        }
+        
+        #messageDisplay {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            flex-grow: 1;
+            min-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    overflow: hidden;
+}
+
+.message-box h4 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #578E7E;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-box p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    font-size: 16px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 4.8em; /* 3 lines × 1.6 line height */
+}
+        
+        .message-box small {
+            color: #888;
+            display: block;
+            text-align: right;
+            margin-top: 10px;
+        }
+        
+        .message-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(3px);
+        }
+
+        .message-popup.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            width: 90%;
+            max-width: 600px;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+            border-top: 5px solid #578E7E;
+        }
+
+        .message-popup.active .popup-content {
+            transform: scale(1);
+        }
+
+        .close-popup {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            color: #578E7E;
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: auto;
+            padding: 5px;
+            transition: transform 0.2s ease;
+            border-radius: 50%;
+            height: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(87, 142, 126, 0.1);
+        }
+
+        .close-popup:hover {
+            transform: rotate(90deg);
+            background: rgba(87, 142, 126, 0.2);
+        }
+
+        .popup-header {
+            color: #578E7E;
+            margin-bottom: 25px;
+            font-size: 28px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(87, 142, 126, 0.2);
+            font-weight: bold;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .popup-message {
+            background: #F5ECD5;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+            font-size: 17px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            color: #333;
+            border-left: 5px solid #578E7E;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .popup-timestamp {
+            color: #888;
+            text-align: right;
+            font-style: italic;
+            font-size: 14px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 30;
+            background: #578E7E;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        @media screen and (max-width: 992px) {
+            .container {
+                height: 90vh;
+            }
+        }
+        
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                flex-direction: column;
+                height: 95vh;
+                margin-top: 40px;
+            }
+            
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                max-width: 100%;
+                min-width: 100%;
+                border-radius: 0;
+                height: 100vh;
+                transform: translateY(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.active {
+                transform: translateY(0);
+            }
+            
+            .menu-toggle {
+                display: flex;
+            }
+            
+            .messages {
+                border-radius: 15px;
+                padding: 20px;
+                width: 100%;
+                margin-top: 0;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            .profile-circle {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+            
+            .popup-content {
+                width: 95%;
+                padding: 20px;
+            }
+            
+            #messageDisplay {
+                min-height: 400px;
+            }
+        }
+        
+        @media screen and (max-width: 480px) {
+            .container {
+                height: calc(100vh - 60px);
+            }
+            
+            .messages {
+                padding: 15px;
+            }
+            
+            .input-container {
+                margin-bottom: 20px;
+            }
+            
+            input, textarea {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            
+            .popup-header {
+                font-size: 20px;
+            }
+            
+            .popup-message {
+                padding: 15px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="menu-toggle" id="menuToggle">☰</button>
+    
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <h3>Friends List</h3>
+            <ul id="nameList">
+                <li>Loading messages...</li>
+            </ul>
+        </div>
+        
+        <div class="messages">
+            <h3>Friendship Message | เขียนเฟรนด์ชิป</h3>
+            
+            <div class="profile-container">
+                <div class="profile-circle">
+                    <img src="profile.png" alt="profile-circle">
+                </div>
+                <div class="profile-name">Leon</div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" id="name" placeholder="Name (ชื่อ)">
+                <textarea id="message" placeholder="Message (อยากบอกไรเขียนเลย)"></textarea>
+                <button id="sendButton">Send</button>
+            </div>
+            <h3>Recent Messages</h3>
+            <div id="messageDisplay">
+                <p>Select a friend from the list to view their message</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="message-popup" id="messagePopup">
+        <div class="popup-content">
+            <button class="close-popup" id="closePopup">×</button>
+            <h2 class="popup-header" id="popupName">Friend Name</h2>
+            <div class="popup-message" id="popupMessage">Message content will appear here</div>
+            <div class="popup-timestamp" id="popupTimestamp">Timestamp</div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc2skkLmuehyjv5gMSvVx6ODDrhIsC3W0",
+            authDomain: "friendship-data-aeb37.firebaseapp.com",
+            projectId: "friendship-data-aeb37",
+            storageBucket: "friendship-data-aeb37.firebasestorage.app",
+            messagingSenderId: "59492889137",
+            appId: "1:59492889137:web:25284d8c71fc310c285b10",
+            measurementId: "G-02WDTJX11K"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const sidebar = document.getElementById('sidebar');
+        const nameList = document.getElementById('nameList');
+        const messageDisplay = document.getElementById('messageDisplay');
+        const nameInput = document.getElementById('name');
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('sendButton');
+        const messagePopup = document.getElementById('messagePopup');
+        const closePopup = document.getElementById('closePopup');
+        const popupName = document.getElementById('popupName');
+        const popupMessage = document.getElementById('popupMessage');
+        const popupTimestamp = document.getElementById('popupTimestamp');
+        const menuToggle = document.getElementById('menuToggle');
+        
+        // Mobile menu functions
+        menuToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                menuToggle.innerHTML = '☰';
+            } else {
+                sidebar.classList.add('active');
+                menuToggle.innerHTML = '×';
+            }
+        });
+        
+        // Check if device is mobile
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+        
+        // Close sidebar when clicking a name on mobile
+        function setupMobileNameListClickHandlers() {
+            if (isMobile()) {
+                const items = nameList.querySelectorAll('li');
+                items.forEach(item => {
+                    const originalClickHandler = item.onclick;
+                    item.onclick = (e) => {
+                        originalClickHandler(e);
+                        sidebar.classList.remove('active');
+                        menuToggle.innerHTML = '☰';
+                    };
+                });
+            }
+        }
+        
+        // Send message to Firebase
+        function sendMessage() {
+            const name = nameInput.value.trim();
+            const message = messageInput.value.trim();
+            
+            if (!name || !message) {
+                alert('Please enter both your name and a message (ใส่ข้อความให้ครบก่อน)');
+                return;
+            }
+            
+            db.collection('messages').add({
+                name: name,
+                text: message,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                // Keep name (since it's your profile) but clear message
+                messageInput.value = '';
+                alert('Your message has been sent! (ส่งแล้ว)');
+                // Reload messages to show the new one
+                loadMessages();
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                alert('Error sending message. Please try again. (ลองอีกที)');
+            });
+        }
+        
+        // Load messages from Firebase
+        function loadMessages() {
+    db.collection('messages')
+      .orderBy('timestamp', 'desc')
+      .get()
+      .then(snapshot => {
+          if (snapshot.empty) {
+              nameList.innerHTML = '<li>No messages yet</li>';
+              messageDisplay.innerHTML = '<p>No messages available yet</p>';
+              return;
+          }
+          
+          nameList.innerHTML = '';
+          messageDisplay.innerHTML = '';
+          
+          // Create full list for sidebar
+          snapshot.forEach(doc => {
+              const data = doc.data();
+              
+              // Create list item for sidebar
+              const li = document.createElement('li');
+              li.textContent = data.name || 'Anonymous';
+              li.addEventListener('click', () => {
+                  showMessagePopup(data);
+              });
+              nameList.appendChild(li);
+          });
+          
+          // Get only the 4 most recent messages for the display area
+          const recentMessages = snapshot.docs.slice(0, 4);
+          
+          if (recentMessages.length === 0) {
+              messageDisplay.innerHTML = '<p>No messages available yet</p>';
+          } else {
+              // Create preview for just the 4 most recent messages
+              recentMessages.forEach(doc => {
+                  const data = doc.data();
+                  const timestamp = data.timestamp 
+                      ? new Date(data.timestamp.toDate()).toLocaleString() 
+                      : 'Just now';
+                  
+                  const previewDiv = document.createElement('div');
+                  previewDiv.className = 'message-box';
+                  previewDiv.innerHTML = `
+                      <h4>${data.name || 'Anonymous'}</h4>
+                      <p>${data.text.length > 100 ? data.text.substring(0, 100) + '...' : data.text}</p>
+                      <small>${timestamp}</small>
+                  `;
+                  previewDiv.addEventListener('click', () => {
+                      showMessagePopup(data);
+                  });
+                  messageDisplay.appendChild(previewDiv);
+              });
+          }
+          
+          // Setup mobile click handlers
+          setupMobileNameListClickHandlers();
+      })
+      .catch(error => {
+          console.error('Error loading messages:', error);
+          nameList.innerHTML = '<li>Error loading messages</li>';
+          messageDisplay.innerHTML = '<p>Error loading messages</p>';
+      });
+}
+        
+        // Show message in popup
+        function showMessagePopup(data) {
+            const timestamp = data.timestamp 
+                ? new Date(data.timestamp.toDate()).toLocaleString() 
+                : 'Just now';
+            
+            popupName.textContent = data.name || 'Anonymous';
+            popupMessage.textContent = data.text;
+            popupTimestamp.textContent = timestamp;
+            
+            messagePopup.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling behind popup
+        }
+        
+        // Close popup event
+        closePopup.addEventListener('click', () => {
+            messagePopup.classList.remove('active');
+            document.body.style.overflow = ''; // Re-enable scrolling
+        });
+        
+        // Close popup when clicking outside content
+        messagePopup.addEventListener('click', (e) => {
+            if (e.target === messagePopup) {
+                messagePopup.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // Event Listeners
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (!isMobile()) {
+                    sidebar.classList.remove('active');
+                    menuToggle.innerHTML = '☰';
+                }
+                setupMobileNameListClickHandlers();
+            });
+        });
+    
+    </script>
+    <!-- Paper Airplane Animation -->
+<style>
+    .paper-airplane {
+        position: fixed;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9999;
+        width: 100px; /* Adjust based on your image size */
+        height: 100px; /* Adjust based on your image size */
+        transform-origin: center;
+        background-image: url('airplane.png'); /* Path to your image */
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+
+    @keyframes flyAndFade {
+        0% {
+            opacity: 1;
+            transform: translate(0, 0) rotate(0deg);
+        }
+        25% {
+            transform: translate(-20px, -20vh) rotate(-45deg); /* Use viewport height (vh) for responsiveness */
+        }
+        50% {
+            transform: translate(0px, -40vh) rotate(0deg);
+        }
+        75% {
+            transform: translate(20px, -60vh) rotate(45deg);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(0, -80vh) rotate(0deg); /* Adjust based on screen height */
+        }
+    }
+
+    .fly {
+        animation: flyAndFade 1s ease-out forwards;
+    }
+</style>
+
+<script>
+    function createPaperAirplane(clickX, clickY) {
+        const airplane = document.createElement('div');
+        airplane.className = 'paper-airplane';
+        airplane.style.left = `${clickX - 15}px`; /* Center the image */
+        airplane.style.top = `${clickY - 15}px`; /* Center the image */
+        document.body.appendChild(airplane);
+
+        requestAnimationFrame(() => {
+            airplane.classList.add('fly');
+        });
+
+        setTimeout(() => {
+            document.body.removeChild(airplane);
+        }, 1500);
+    }
+
+    // Remove the existing click handler
+    sendButton.removeEventListener('click', sendMessage);
+
+    // Add the new click handler
+    sendButton.onclick = (e) => {
+        const rect = sendButton.getBoundingClientRect();
+        const centerX = rect.left + (rect.width / 2);
+        const centerY = rect.top + (rect.height / 2);
+        createPaperAirplane(centerX, centerY);
+        sendMessage();
+    };
+</script>
+</body>
+</html>
