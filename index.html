@@ -584,7 +584,7 @@
           });
           
           // Get only the 4 most recent messages for the display area
-          const recentMessages = snapshot.docs.slice(0, 4);
+          const recentMessages = snapshot.docs.slice(0, 3);
           
           if (recentMessages.length === 0) {
               messageDisplay.innerHTML = '<p>No messages available yet</p>';
