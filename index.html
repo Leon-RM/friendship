@@ -451,6 +451,11 @@
             <div class="input-container">
                 <input type="text" id="name" placeholder="Name (ชื่อ)">
                 <textarea id="message" placeholder="Message (อยากบอกไรเขียนเลย)"></textarea>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; width: fit-content;">
+                    <input type="checkbox" id="privateMessage" onchange="showPrivateMessageAlert()">
+                    <label for="privateMessage" style="white-space: nowrap;">Send as private🔒 (ส่งแบบส่วนตัว)</label>
+                </div>
+
                 <button id="sendButton">Send</button>
             </div>
             <h3>Recent Messages</h3>
@@ -468,6 +473,7 @@
             <div class="popup-timestamp" id="popupTimestamp">Timestamp</div>
         </div>
     </div>
+    
 
     <script>
         const firebaseConfig = {
@@ -584,7 +590,7 @@
           });
           
           // Get only the 4 most recent messages for the display area
-          const recentMessages = snapshot.docs.slice(0, 3);
+          const recentMessages = snapshot.docs.slice(0, 4);
           
           if (recentMessages.length === 0) {
               messageDisplay.innerHTML = '<p>No messages available yet</p>';
@@ -665,6 +671,87 @@
             });
         });
     
+        function showPrivateMessageAlert() {
+    const isChecked = document.getElementById("privateMessage").checked;
+    if (isChecked) {
+        alert("Once you send this message as private, you'll only be able to see it with a password.");
+    }
+}
+
+function sendMessage() {
+    const name = nameInput.value.trim();
+    const message = messageInput.value.trim();
+    const isPrivate = document.getElementById("privateMessage").checked;
+
+    if (!name || !message) {
+        alert('Please enter both your name and a message (ใส่ข้อความให้ครบก่อน)');
+        return;
+    }
+
+    db.collection('messages').add({
+        name: name,
+        text: message,
+        isPrivate: isPrivate, // Store private status
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        messageInput.value = '';
+        alert('Your message has been sent! (ส่งแล้ว)');
+        loadMessages();
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+        alert('Error sending message. Please try again. (ลองอีกที)');
+    });
+}
+
+// Load Messages with Private Handling
+function loadMessages() {
+    db.collection('messages')
+      .orderBy('timestamp', 'desc')
+      .get()
+      .then(snapshot => {
+          if (snapshot.empty) {
+              nameList.innerHTML = '<li>No messages yet</li>';
+              messageDisplay.innerHTML = '<p>No messages available yet</p>';
+              return;
+          }
+
+          nameList.innerHTML = '';
+          messageDisplay.innerHTML = '';
+
+          snapshot.forEach(doc => {
+              const data = doc.data();
+              const li = document.createElement('li');
+              li.textContent = data.isPrivate ? `${data.name} 🔒` : data.name;
+              li.addEventListener('click', () => {
+                  if (data.isPrivate) {
+                      showPinPopup(data);
+                  } else {
+                      showMessagePopup(data);
+                  }
+              });
+              nameList.appendChild(li);
+          });
+
+          setupMobileNameListClickHandlers();
+      })
+      .catch(error => {
+          console.error('Error loading messages:', error);
+      });
+}
+
+// PIN Popup for Private Messages
+function showPinPopup(data) {
+    let enteredPin = prompt("Enter 6-digit PIN to unlock (ป้อนรหัสผ่าน 6 หลัก):");
+
+    if (enteredPin === "210909") {
+        showMessagePopup(data);
+    } else {
+        alert("Incorrect PIN. Try again.");
+    }
+}
+
     </script>
     <!-- Paper Airplane Animation -->
 <style>
