@@ -590,7 +590,7 @@
           });
           
           // Get only the 4 most recent messages for the display area
-          const recentMessages = snapshot.docs.slice(0, 4);
+          const recentMessages = snapshot.docs.slice(0, 3);
           
           if (recentMessages.length === 0) {
               messageDisplay.innerHTML = '<p>No messages available yet</p>';
@@ -624,6 +624,35 @@
           nameList.innerHTML = '<li>Error loading messages</li>';
           messageDisplay.innerHTML = '<p>Error loading messages</p>';
       });
+}
+// PIN Popup for Private Messages
+function showPinPopup(data) {
+    let enteredPin = prompt("Enter PIN to unlock (ป้อนรหัสผ่าน):");
+    
+    // Check if user pressed cancel
+    if (enteredPin === null) {
+        return;
+    }
+    
+    if (enteredPin === "210909") {
+        showMessagePopup(data);
+    } else {
+        alert("Incorrect PIN. Try again. (รหัสผิด อย่าพยายามเลย)");
+    }
+}
+
+// Make sure this is correctly defined and not overwritten elsewhere
+function showMessagePopup(data) {
+    const timestamp = data.timestamp 
+        ? new Date(data.timestamp.toDate()).toLocaleString() 
+        : 'Just now';
+    
+    popupName.textContent = data.name || 'Anonymous';
+    popupMessage.textContent = data.text;
+    popupTimestamp.textContent = timestamp;
+    
+    messagePopup.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling behind popup
 }
         
         // Show message in popup
@@ -674,7 +703,7 @@
         function showPrivateMessageAlert() {
     const isChecked = document.getElementById("privateMessage").checked;
     if (isChecked) {
-        alert("Once you send this message as private, you'll only be able to see it with a password.");
+        alert("Once message is private, you'll not able to see the message unless you know password (ถ้าติ๊กส่วนตัวแล้วจะไม่สามารถดูได้อีกนอกจากจะมีรหัสซึ่งตั้งโดยเจ้าของ)");
     }
 }
 
@@ -706,6 +735,7 @@ function sendMessage() {
 }
 
 // Load Messages with Private Handling
+// Load Messages with Private Handling
 function loadMessages() {
     db.collection('messages')
       .orderBy('timestamp', 'desc')
@@ -720,8 +750,11 @@ function loadMessages() {
           nameList.innerHTML = '';
           messageDisplay.innerHTML = '';
 
+          // Create full list for sidebar
           snapshot.forEach(doc => {
               const data = doc.data();
+              
+              // Create list item for sidebar
               const li = document.createElement('li');
               li.textContent = data.isPrivate ? `${data.name} 🔒` : data.name;
               li.addEventListener('click', () => {
@@ -733,23 +766,42 @@ function loadMessages() {
               });
               nameList.appendChild(li);
           });
-
+          
+          // Get only the 4 most recent PUBLIC messages for the display area
+          const publicMessages = snapshot.docs.filter(doc => !doc.data().isPrivate).slice(0, 3);
+          
+          if (publicMessages.length === 0) {
+              messageDisplay.innerHTML = '<p>No public messages available yet</p>';
+          } else {
+              // Create preview for just the 4 most recent public messages
+              publicMessages.forEach(doc => {
+                  const data = doc.data();
+                  const timestamp = data.timestamp 
+                      ? new Date(data.timestamp.toDate()).toLocaleString() 
+                      : 'Just now';
+                  
+                  const previewDiv = document.createElement('div');
+                  previewDiv.className = 'message-box';
+                  previewDiv.innerHTML = `
+                      <h4>${data.name || 'Anonymous'}</h4>
+                      <p>${data.text.length > 100 ? data.text.substring(0, 100) + '...' : data.text}</p>
+                      <small>${timestamp}</small>
+                  `;
+                  previewDiv.addEventListener('click', () => {
+                      showMessagePopup(data);
+                  });
+                  messageDisplay.appendChild(previewDiv);
+              });
+          }
+          
+          // Setup mobile click handlers
           setupMobileNameListClickHandlers();
       })
       .catch(error => {
           console.error('Error loading messages:', error);
+          nameList.innerHTML = '<li>Error loading messages</li>';
+          messageDisplay.innerHTML = '<p>Error loading messages</p>';
       });
-}
-
-// PIN Popup for Private Messages
-function showPinPopup(data) {
-    let enteredPin = prompt("Enter 6-digit PIN to unlock (ป้อนรหัสผ่าน 6 หลัก):");
-
-    if (enteredPin === "210909") {
-        showMessagePopup(data);
-    } else {
-        alert("Incorrect PIN. Try again.");
-    }
 }
 
     </script>
